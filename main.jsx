@@ -207,6 +207,15 @@ const AuthScreen = () => {
 
 
 const MealPrepApp = () => {
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const [session, setSession] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -242,6 +251,12 @@ const MealPrepApp = () => {
   const [showRecipeSelector, setShowRecipeSelector] = useState(null);
   const [showShoppingList, setShowShoppingList] = useState(false);
   const [showAddRecipeModal, setShowAddRecipeModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importStep, setImportStep] = useState('url'); // 'url' | 'loading' | 'review'
+  const [importUrl, setImportUrl] = useState('');
+  const [importError, setImportError] = useState('');
+  const [importedRecipe, setImportedRecipe] = useState(null);
+  const [importFolderIds, setImportFolderIds] = useState([]);
   const [showAddToCalendar, setShowAddToCalendar] = useState(null);
   const [recipeSearchQuery, setRecipeSearchQuery] = useState('');
   const [userRecipes, setUserRecipes] = useState([]);
@@ -586,23 +601,23 @@ const MealPrepApp = () => {
   if (!session) return <AuthScreen />;
 
   return (
-    <div style={{minHeight:'100vh',background:'#0a0a0a',fontFamily:'system-ui, sans-serif',color:'#fff'}}>
+    <div style={{minHeight:'100vh',background:'#0a0a0a',fontFamily:'system-ui, sans-serif',color:'#fff',overflowX:'hidden'}}>
 
       {/* Header */}
       <div style={{background:'rgba(0,0,0,0.95)',borderBottom:'1px solid #262626',position:'sticky',top:0,zIndex:100}}>
-        <div style={{maxWidth:'1400px',margin:'0 auto',padding:'10px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div style={{maxWidth:'1400px',margin:'0 auto',padding:isMobile?'10px 12px':'10px 24px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
-            <img src="https://www.dropbox.com/scl/fi/odkvuob40yhyittqba8k5/ChatGPT-Image-Feb-16-2026-06_37_13-PM.png?rlkey=k89onj2ds29ikovgm8b70dniv&st=p7vuda88&dl=1" alt="Logo" style={{width:'80px',height:'80px',objectFit:'contain'}} />
+            <img src="https://www.dropbox.com/scl/fi/odkvuob40yhyittqba8k5/ChatGPT-Image-Feb-16-2026-06_37_13-PM.png?rlkey=k89onj2ds29ikovgm8b70dniv&st=p7vuda88&dl=1" alt="Logo" style={{width:isMobile?'50px':'80px',height:isMobile?'50px':'80px',objectFit:'contain'}} />
             <div>
-              <h1 style={{margin:0,fontSize:'26px',fontWeight:700,color:'#fff'}}>Recipe Roulette</h1>
+              <h1 style={{margin:0,fontSize:isMobile?'20px':'26px',fontWeight:700,color:'#fff'}}>Recipe Roulette</h1>
               <p style={{margin:0,fontSize:'12px',color:'#666'}}>Plan together, eat better</p>
             </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-            <nav style={{display:'flex',gap:'6px'}}>
+            <nav style={{display:'flex',gap:isMobile?'4px':'6px',overflowX:'auto',WebkitOverflowScrolling:'touch',maxWidth:isMobile?'calc(100vw - 200px)':'none'}}>
               {[{id:'home',label:'Home'},{id:'calendar',label:'My Meals'},{id:'recipes',label:'Recipe Book'},{id:'community',label:'Community'},{id:'settings',label:'Settings'}].map(item => (
                 <button key={item.id} onClick={() => setCurrentView(item.id)}
-                  style={{padding:'8px 16px',background:currentView===item.id?'#ffffff':'transparent',color:currentView===item.id?'#000':'#999',border:currentView===item.id?'none':'1px solid #262626',borderRadius:'8px',cursor:'pointer',fontWeight:600,fontSize:'13px'}}>
+                  style={{padding:isMobile?'6px 10px':'8px 16px',background:currentView===item.id?'#ffffff':'transparent',color:currentView===item.id?'#000':'#999',border:currentView===item.id?'none':'1px solid #262626',borderRadius:'8px',cursor:'pointer',fontWeight:600,fontSize:isMobile?'11px':'13px',whiteSpace:'nowrap',flexShrink:0}}>
                   {item.label}
                 </button>
               ))}
@@ -618,7 +633,7 @@ const MealPrepApp = () => {
                     : <span style={{fontSize:'14px',fontWeight:700,color:'#fff'}}>{(profile.displayName || session.user.email).charAt(0).toUpperCase()}</span>
                   }
                 </div>
-                <span style={{fontSize:'13px',fontWeight:600,color:'#fff',maxWidth:'110px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                <span style={{fontSize:isMobile?'12px':'13px',fontWeight:600,color:'#fff',maxWidth:isMobile?'80px':'110px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:isMobile?'none':'block'}}>
                   {profile.displayName || session.user.email.split('@')[0]}
                 </span>
               </button>
@@ -627,16 +642,16 @@ const MealPrepApp = () => {
         </div>
       </div>
 
-      <div style={{maxWidth:'1400px',margin:'0 auto',padding:'28px 24px'}}>
+      <div style={{maxWidth:'1400px',margin:'0 auto',padding:isMobile?'16px 12px':'28px 24px'}}>
 
 
         {/* HOME FEED */}
         {currentView === 'home' && (
-          <div style={{maxWidth:'680px', margin:'0 auto'}}>
+          <div style={{maxWidth:isMobile?'100%':'680px', margin:'0 auto'}}>
 
             {/* Greeting */}
             <div style={{marginBottom:'28px'}}>
-              <h2 style={{fontSize:'28px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>
+              <h2 style={{fontSize:isMobile?'22px':'28px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>
                 {(() => { const h = new Date().getHours(); return `Good ${h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'}, ${session.user.email.split('@')[0]} 👋`; })()}
               </h2>
               <p style={{color:'#666',margin:0,fontSize:'14px'}}>Here's what's cooking today</p>
@@ -768,7 +783,7 @@ const MealPrepApp = () => {
           <div>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
               <div>
-                <h2 style={{fontSize:'30px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>Weekly Meal Plan</h2>
+                <h2 style={{fontSize:isMobile?'24px':'30px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>Weekly Meal Plan</h2>
                 <p style={{color:'#666',margin:0,fontSize:'13px'}}>Drag meals to rearrange • Click to view details</p>
               </div>
               <div style={{display:'flex',gap:'10px'}}>
@@ -792,7 +807,7 @@ const MealPrepApp = () => {
                       const disabled = isSlotDisabled(dayIndex, mealType);
                       const meal = mealPlan[dayIndex][mealType];
                       return (
-                        <div key={mealType} onDragOver={handleDragOver} onDrop={() => handleDrop(dayIndex, mealType)}
+                        <div key={mealType} onDragOver={(e) => handleDragOver(e)} onDrop={(e) => handleDrop(e, dayIndex, mealType)}
                           style={{background:'#1a1a1a',borderRadius:'8px',padding:'8px',marginBottom:'8px',minHeight:'68px',border:disabled?'2px solid #333':'2px dashed #262626',position:'relative',opacity:disabled?0.5:1}}>
                           {!meal && (
                             <button onClick={() => toggleSlotDisabled(dayIndex, mealType)}
@@ -804,7 +819,7 @@ const MealPrepApp = () => {
                           {disabled ? (
                             <p style={{margin:0,fontSize:'10px',color:'#555',textAlign:'center',paddingTop:'6px'}}>Disabled</p>
                           ) : meal ? (
-                            <div draggable onDragStart={() => handleDragStart(dayIndex, mealType, meal)} onClick={() => setSelectedRecipe(meal)}
+                            <div draggable={true} onDragStart={(e) => handleDragStart(e, dayIndex, mealType, meal)} onClick={() => setSelectedRecipe(meal)}
                               style={{background:'#fff',borderRadius:'6px',padding:'6px',position:'relative',cursor:'pointer'}}>
                               <button onClick={e => { e.stopPropagation(); removeMealFromPlan(dayIndex, mealType); }}
                                 style={{position:'absolute',top:'3px',right:'3px',background:'rgba(0,0,0,0.4)',border:'none',borderRadius:'50%',width:'16px',height:'16px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',padding:0}}>
@@ -835,12 +850,15 @@ const MealPrepApp = () => {
               <div>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'24px'}}>
                   <div>
-                    <h2 style={{fontSize:'30px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>Recipe Book</h2>
+                    <h2 style={{fontSize:isMobile?'24px':'30px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>Recipe Book</h2>
                     <p style={{color:'#666',margin:0}}>{folders.length} folders • {allMyRecipes.length} recipes</p>
                   </div>
                   <div style={{display:'flex',gap:'10px'}}>
                     <button onClick={() => setShowFolderModal(true)} style={{padding:'10px 18px',background:'#1a1a1a',border:'1px solid #262626',borderRadius:'8px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontWeight:600,fontSize:'13px',color:'#fff'}}>
                       <Plus size={16} /> New Folder
+                    </button>
+                    <button onClick={() => { setShowImportModal(true); setImportStep('url'); setImportUrl(''); setImportError(''); setImportedRecipe(null); setImportFolderIds([]); }} style={{padding:'10px 18px',background:'#1a1a1a',border:'1px solid #262626',borderRadius:'8px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontWeight:600,fontSize:'13px',color:'#fff'}}>
+                      🔗 Import URL
                     </button>
                     <button onClick={() => setShowAddRecipeModal(true)} style={{padding:'10px 18px',background:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontWeight:600,fontSize:'13px',color:'#000'}}>
                       <Plus size={16} /> Add Recipe
@@ -849,7 +867,7 @@ const MealPrepApp = () => {
                 </div>
 
                 {/* All Recipes folder card first */}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))',gap:'16px'}}>
+                <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(auto-fill, minmax(280px, 1fr))',gap:'16px'}}>
 
                   {/* All Recipes special card */}
                   <div onClick={() => setActiveFolder('all')} style={{background:'#1a1a1a',borderRadius:'16px',overflow:'hidden',border:'1px solid #262626',cursor:'pointer',transition:'border-color 0.15s'}}>
@@ -902,7 +920,7 @@ const MealPrepApp = () => {
                       ←
                     </button>
                     <div>
-                      <h2 style={{fontSize:'26px',fontWeight:700,color:'#fff',margin:'0 0 2px 0'}}>
+                      <h2 style={{fontSize:isMobile?'20px':'26px',fontWeight:700,color:'#fff',margin:'0 0 2px 0'}}>
                         {activeFolder === 'all' ? '📚 All Recipes' : (() => { const f = folders.find(f => f.id === activeFolder); return f ? `${f.emoji} ${f.name}` : ''; })()}
                       </h2>
                       <p style={{margin:0,fontSize:'13px',color:'#666'}}>
@@ -910,6 +928,9 @@ const MealPrepApp = () => {
                       </p>
                     </div>
                   </div>
+                  <button onClick={() => { setShowImportModal(true); setImportStep('url'); setImportUrl(''); setImportError(''); setImportedRecipe(null); setImportFolderIds([]); }} style={{padding:'10px 18px',background:'#1a1a1a',border:'1px solid #262626',borderRadius:'8px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontWeight:600,fontSize:'13px',color:'#fff'}}>
+                    🔗 Import URL
+                  </button>
                   <button onClick={() => setShowAddRecipeModal(true)} style={{padding:'10px 18px',background:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px',fontWeight:600,fontSize:'13px',color:'#000'}}>
                     <Plus size={16} /> Add Recipe
                   </button>
@@ -930,7 +951,7 @@ const MealPrepApp = () => {
                       <p style={{color:'#555',fontSize:'13px',margin:0}}>Save recipes to this folder using the bookmark button on any recipe card</p>
                     </div>
                   ) : (
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))',gap:'18px'}}>
+                    <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(auto-fill, minmax(260px, 1fr))',gap:'18px'}}>
                       {recipesToShow.map(recipe => (
                         <div key={recipe.id} style={{background:'#1a1a1a',borderRadius:'12px',overflow:'hidden',border:'1px solid #262626'}}>
                           <div onClick={() => setSelectedRecipe(recipe)} style={{cursor:'pointer'}}>
@@ -946,13 +967,13 @@ const MealPrepApp = () => {
                             </div>
                           </div>
                           <div style={{padding:'8px 14px 14px',display:'flex',gap:'6px',flexWrap:'wrap'}}>
-                            <button onClick={e => { e.stopPropagation(); setShowRatingModal(recipe); }} style={{flex:'1 1 auto',padding:'7px',background:userRatings[recipe.id]?'#1a1a1a':'#262626',color:userRatings[recipe.id]?'#fbbf24':'#999',border:'1px solid #333',borderRadius:'6px',fontSize:'11px',fontWeight:600,cursor:'pointer'}}>
+                            <button onClick={e => { e.stopPropagation(); setShowRatingModal(recipe); }} style={{flex:isMobile?'1 1 100%':'1 1 auto',padding:'7px',background:userRatings[recipe.id]?'#1a1a1a':'#262626',color:userRatings[recipe.id]?'#fbbf24':'#999',border:'1px solid #333',borderRadius:'6px',fontSize:'11px',fontWeight:600,cursor:'pointer'}}>
                               {userRatings[recipe.id] ? `★ ${userRatings[recipe.id].rating}` : '☆ Rate'}
                             </button>
-                            <button onClick={e => { e.stopPropagation(); setShowSaveToFolderModal(recipe); }} style={{flex:'1 1 auto',padding:'7px',background:'#1a1a1a',color:'#fff',border:'1px solid #333',borderRadius:'6px',fontSize:'11px',fontWeight:600,cursor:'pointer'}}>
+                            <button onClick={e => { e.stopPropagation(); setShowSaveToFolderModal(recipe); }} style={{flex:isMobile?'1 1 48%':'1 1 auto',padding:'7px',background:'#1a1a1a',color:'#fff',border:'1px solid #333',borderRadius:'6px',fontSize:'11px',fontWeight:600,cursor:'pointer'}}>
                               🗂 Folder
                             </button>
-                            <button onClick={e => { e.stopPropagation(); setShowAddToCalendar(recipe); }} style={{flex:'1 1 auto',padding:'7px',background:'#fff',color:'#000',border:'none',borderRadius:'6px',fontSize:'11px',fontWeight:600,cursor:'pointer'}}>
+                            <button onClick={e => { e.stopPropagation(); setShowAddToCalendar(recipe); }} style={{flex:isMobile?'1 1 48%':'1 1 auto',padding:'7px',background:'#fff',color:'#000',border:'none',borderRadius:'6px',fontSize:'11px',fontWeight:600,cursor:'pointer'}}>
                               📅 Cal
                             </button>
                           </div>
@@ -970,11 +991,11 @@ const MealPrepApp = () => {
         {currentView === 'community' && (
           <div>
             <div style={{marginBottom:'20px'}}>
-              <h2 style={{fontSize:'30px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>Community Recipes</h2>
+              <h2 style={{fontSize:isMobile?'24px':'30px',fontWeight:700,color:'#fff',margin:'0 0 4px 0'}}>Community Recipes</h2>
               <p style={{color:'#666',margin:0}}>{filterRecipes(communityRecipes).length} recipes</p>
             </div>
             <FilterBar showAuthor />
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))',gap:'18px'}}>
+            <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(auto-fill, minmax(260px, 1fr))',gap:'18px'}}>
               {filterRecipes(communityRecipes).length === 0 ? (
                 <div style={{gridColumn:'1/-1',textAlign:'center',padding:'60px',background:'#1a1a1a',borderRadius:'12px',border:'1px solid #262626'}}>
                   <p style={{color:'#999'}}>No recipes match your filters</p>
@@ -1026,7 +1047,7 @@ const MealPrepApp = () => {
         {/* SETTINGS */}
         {currentView === 'settings' && (
           <div>
-            <h2 style={{fontSize:'30px',fontWeight:700,color:'#fff',margin:'0 0 6px 0'}}>Settings</h2>
+            <h2 style={{fontSize:isMobile?'24px':'30px',fontWeight:700,color:'#fff',margin:'0 0 6px 0'}}>Settings</h2>
             <p style={{color:'#999',margin:'0 0 24px 0'}}>Toggle which meals to plan each day</p>
             <div style={{background:'#1a1a1a',borderRadius:'8px',padding:'28px',border:'1px solid #262626'}}>
               <h3 style={{margin:'0 0 20px 0',fontSize:'18px',fontWeight:700,color:'#fff'}}>Weekly Meal Schedule</h3>
@@ -1109,16 +1130,18 @@ const MealPrepApp = () => {
       {showProfilePanel && (
         <>
           {/* Backdrop */}
-          <div onClick={() => setShowProfilePanel(false)}
-            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:200,backdropFilter:'blur(2px)'}} />
+          <div 
+            onClick={() => setShowProfilePanel(false)}
+            onTouchEnd={(e) => { e.preventDefault(); setShowProfilePanel(false); }}
+            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:200,backdropFilter:'blur(2px)',cursor:'pointer'}} />
 
           {/* Panel */}
-          <div style={{position:'fixed',top:0,right:0,bottom:0,width:'380px',background:'#111',borderLeft:'1px solid #262626',zIndex:201,display:'flex',flexDirection:'column',overflowY:'auto'}}>
+          <div style={{position:'fixed',top:0,right:0,bottom:0,width:isMobile?'100%':'380px',background:'#111',borderLeft:'1px solid #262626',zIndex:201,display:'flex',flexDirection:'column',overflowY:'auto'}}>
 
             {/* Panel header */}
             <div style={{padding:'20px 24px',borderBottom:'1px solid #1e1e1e',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
               <h2 style={{margin:0,fontSize:'18px',fontWeight:700,color:'#fff'}}>Your Profile</h2>
-              <button onClick={() => setShowProfilePanel(false)} style={{background:'none',border:'none',cursor:'pointer',padding:'4px'}}><X size={20} color="#666" /></button>
+              <button onClick={() => setShowProfilePanel(false)} style={{background:'#262626',border:'1px solid #333',borderRadius:'50%',cursor:'pointer',padding:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}><X size={18} color="#fff" /></button>
             </div>
 
             <div style={{padding:'24px',flex:1,display:'flex',flexDirection:'column',gap:'28px'}}>
@@ -1434,6 +1457,160 @@ const MealPrepApp = () => {
         </div>
       )}
 
+      {/* IMPORT RECIPE MODAL */}
+      {showImportModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:'20px'}}>
+          <div style={{background:'#1a1a1a',borderRadius:'16px',padding:'28px',maxWidth:'560px',width:'100%',maxHeight:'90vh',overflow:'auto',border:'1px solid #262626'}}>
+
+            {/* STEP 1: URL Input */}
+            {importStep === 'url' && (
+              <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
+                  <h2 style={{margin:0,fontSize:'20px',fontWeight:700,color:'#fff'}}>🔗 Import Recipe from URL</h2>
+                  <button onClick={() => setShowImportModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={22} color="#999" /></button>
+                </div>
+                <p style={{margin:'0 0 22px 0',fontSize:'13px',color:'#666'}}>Works with AllRecipes, Food Network, NYT Cooking, Serious Eats, and most major recipe sites.</p>
+                <label style={{display:'block',marginBottom:'6px',fontWeight:600,color:'#fff',fontSize:'13px'}}>Recipe URL</label>
+                <input
+                  type="url"
+                  value={importUrl}
+                  onChange={e => { setImportUrl(e.target.value); setImportError(''); }}
+                  placeholder="https://www.allrecipes.com/recipe/..."
+                  autoFocus
+                  style={{width:'100%',padding:'11px 14px',border:`1px solid ${importError ? '#ff4444' : '#262626'}`,borderRadius:'8px',fontSize:'14px',background:'#0a0a0a',color:'#fff',outline:'none',boxSizing:'border-box',marginBottom:'8px'}}
+                />
+                {importError && <p style={{margin:'0 0 14px 0',fontSize:'12px',color:'#ff6b6b'}}>{importError}</p>}
+                <div style={{display:'flex',gap:'10px',marginTop:'16px'}}>
+                  <button onClick={() => setShowImportModal(false)} style={{flex:1,padding:'11px',background:'#262626',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:600,color:'#fff',fontSize:'14px'}}>Cancel</button>
+                  <button onClick={async () => {
+                    if (!importUrl.trim()) { setImportError('Please enter a URL.'); return; }
+                    try { new URL(importUrl); } catch { setImportError('Please enter a valid URL.'); return; }
+                    setImportStep('loading');
+                    setImportError('');
+                    try {
+                      const { data, error } = await supabase.functions.invoke('fetch-recipe', { body: { url: importUrl.trim() } });
+                      if (error || !data?.name) {
+                        setImportStep('url');
+                        setImportError(error?.message || "Couldn't parse a recipe from that URL. Try a different link.");
+                        return;
+                      }
+                      setImportedRecipe({
+                        ...data,
+                        id: Date.now(),
+                        author: session.user.email.split('@')[0],
+                        timesMade: 0,
+                        isEasy: (data.cookTime || 30) < 20,
+                        image: data.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
+                        tags: data.tags || [],
+                        ingredients: Array.isArray(data.ingredients) ? data.ingredients : [],
+                        instructions: Array.isArray(data.instructions) ? data.instructions : [],
+                        prepTime: data.prepTime || '30 min',
+                        servings: data.servings || 4,
+                        cookTime: data.cookTime || 30,
+                      });
+                      setImportStep('review');
+                    } catch (err) {
+                      setImportStep('url');
+                      setImportError('Something went wrong. Please try again.');
+                    }
+                  }} style={{flex:2,padding:'11px',background:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:700,color:'#000',fontSize:'14px'}}>
+                    Import Recipe →
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 2: Loading */}
+            {importStep === 'loading' && (
+              <div style={{textAlign:'center',padding:'40px 20px'}}>
+                <div style={{fontSize:'40px',marginBottom:'16px',animation:'spin 1s linear infinite'}}>⏳</div>
+                <h3 style={{margin:'0 0 8px 0',fontSize:'18px',fontWeight:700,color:'#fff'}}>Fetching recipe...</h3>
+                <p style={{margin:0,fontSize:'13px',color:'#666'}}>Parsing ingredients and instructions</p>
+                <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+              </div>
+            )}
+
+            {/* STEP 3: Review */}
+            {importStep === 'review' && importedRecipe && (
+              <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
+                  <h2 style={{margin:0,fontSize:'20px',fontWeight:700,color:'#fff'}}>Review & Edit</h2>
+                  <button onClick={() => setShowImportModal(false)} style={{background:'none',border:'none',cursor:'pointer'}}><X size={22} color="#999" /></button>
+                </div>
+                <p style={{margin:'0 0 18px 0',fontSize:'13px',color:'#666'}}>Imported from <span style={{color:'#999'}}>{importUrl.replace(/^https?:\/\/(www\.)?/,'').split('/')[0]}</span>. Review and edit before saving.</p>
+
+                {/* Image preview */}
+                {importedRecipe.image && (
+                  <div style={{height:'160px',backgroundImage:`url(${importedRecipe.image})`,backgroundSize:'cover',backgroundPosition:'center',borderRadius:'10px',marginBottom:'16px',border:'1px solid #262626'}} />
+                )}
+
+                {/* Editable fields */}
+                <div style={{marginBottom:'12px'}}>
+                  <label style={{display:'block',marginBottom:'5px',fontWeight:600,color:'#fff',fontSize:'13px'}}>Recipe Name</label>
+                  <input value={importedRecipe.name} onChange={e => setImportedRecipe(r => ({...r, name: e.target.value}))}
+                    style={{width:'100%',padding:'9px 12px',border:'1px solid #262626',borderRadius:'6px',fontSize:'14px',background:'#0a0a0a',color:'#fff',boxSizing:'border-box'}} />
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',marginBottom:'12px'}}>
+                  {[['Prep Time','prepTime','text'],['Cook Time (min)','cookTime','number'],['Servings','servings','number']].map(([label,key,type]) => (
+                    <div key={key}>
+                      <label style={{display:'block',marginBottom:'4px',fontWeight:600,color:'#fff',fontSize:'12px'}}>{label}</label>
+                      <input type={type} value={importedRecipe[key]} onChange={e => setImportedRecipe(r => ({...r, [key]: type==='number' ? parseInt(e.target.value)||0 : e.target.value}))}
+                        style={{width:'100%',padding:'9px 10px',border:'1px solid #262626',borderRadius:'6px',fontSize:'13px',background:'#0a0a0a',color:'#fff',boxSizing:'border-box'}} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginBottom:'12px'}}>
+                  <label style={{display:'block',marginBottom:'5px',fontWeight:600,color:'#fff',fontSize:'13px'}}>Ingredients ({importedRecipe.ingredients.length} items)</label>
+                  <textarea value={importedRecipe.ingredients.join('\n')} onChange={e => setImportedRecipe(r => ({...r, ingredients: e.target.value.split('\n').filter(l => l.trim())}))}
+                    rows={5} style={{width:'100%',padding:'9px 12px',border:'1px solid #262626',borderRadius:'6px',fontSize:'13px',background:'#0a0a0a',color:'#fff',fontFamily:'system-ui',resize:'vertical',boxSizing:'border-box'}} />
+                </div>
+                <div style={{marginBottom:'12px'}}>
+                  <label style={{display:'block',marginBottom:'5px',fontWeight:600,color:'#fff',fontSize:'13px'}}>Instructions ({importedRecipe.instructions.length} steps)</label>
+                  <textarea value={importedRecipe.instructions.join('\n')} onChange={e => setImportedRecipe(r => ({...r, instructions: e.target.value.split('\n').filter(l => l.trim())}))}
+                    rows={5} style={{width:'100%',padding:'9px 12px',border:'1px solid #262626',borderRadius:'6px',fontSize:'13px',background:'#0a0a0a',color:'#fff',fontFamily:'system-ui',resize:'vertical',boxSizing:'border-box'}} />
+                </div>
+
+                {/* Folder picker */}
+                {folders.length > 0 && (
+                  <div style={{marginBottom:'18px'}}>
+                    <label style={{display:'block',marginBottom:'8px',fontWeight:600,color:'#fff',fontSize:'13px'}}>Add to Folders (optional)</label>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:'8px'}}>
+                      {folders.map(f => {
+                        const selected = importFolderIds.includes(f.id);
+                        return (
+                          <button key={f.id} type="button" onClick={() => setImportFolderIds(prev => selected ? prev.filter(id => id !== f.id) : [...prev, f.id])}
+                            style={{padding:'7px 14px',background:selected?'#fff':'#262626',color:selected?'#000':'#999',border:`1px solid ${selected?'#fff':'#333'}`,borderRadius:'20px',cursor:'pointer',fontSize:'12px',fontWeight:600,transition:'all 0.15s'}}>
+                            {f.emoji} {f.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{display:'flex',gap:'10px'}}>
+                  <button onClick={() => { setImportStep('url'); setImportedRecipe(null); }} style={{flex:1,padding:'11px',background:'#262626',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:600,color:'#fff',fontSize:'14px'}}>← Back</button>
+                  <button onClick={async () => {
+                    const finalRecipe = { ...importedRecipe, isEasy: importedRecipe.cookTime < 20 };
+                    setUserRecipes(prev => [...prev, finalRecipe]);
+                    await supabase.from('user_recipes').insert({ user_id: session.user.id, recipe: finalRecipe });
+                    // Add to selected folders
+                    if (importFolderIds.length > 0) {
+                      setFolders(prev => prev.map(f => importFolderIds.includes(f.id) ? {...f, recipes: [...f.recipes, finalRecipe.id]} : f));
+                    }
+                    setShowImportModal(false);
+                    setCurrentView('recipes');
+                  }} style={{flex:2,padding:'11px',background:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontWeight:700,color:'#000',fontSize:'14px'}}>
+                    ✓ Save to Recipe Book
+                  </button>
+                </div>
+              </>
+            )}
+
+          </div>
+        </div>
+      )}
+
       {/* SAVE TO FOLDER MODAL */}
       {showSaveToFolderModal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:'20px'}}>
@@ -1553,7 +1730,7 @@ const MealPrepApp = () => {
             <div style={{padding:'24px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'10px'}}>
                 <div>
-                  <h2 style={{margin:'0 0 8px 0',fontSize:'26px',fontWeight:700,color:'#fff'}}>{selectedRecipe.name}</h2>
+                  <h2 style={{margin:'0 0 8px 0',fontSize:isMobile?'20px':'26px',fontWeight:700,color:'#fff'}}>{selectedRecipe.name}</h2>
                   <RatingDisplay recipeId={selectedRecipe.id} />
                 </div>
                 <div style={{display:'flex',gap:'8px',marginLeft:'12px',flexShrink:0}}>
